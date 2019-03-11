@@ -7,7 +7,7 @@
 
 /*
  * Смирнова Анита АПО-12
- * RUN ID 1086
+ * RUN ID 1316
  * Программа построчной обработки текста, в результате которой
  * каждая группа повторяющихся пробелов заменяется на один пробел.
  * Текстовые строки подаются на стандартный ввод программы,
@@ -52,19 +52,19 @@ void free_memory(char **strings, int strings_capacity) {
 }
 
 char **realloc_memory(char **strings, int strings_capacity) {
-    strings = realloc(strings, (strings_capacity) * sizeof(*strings));
-    if (strings == NULL) {
+    char **new_strings = realloc(strings, (strings_capacity) * sizeof(*strings));
+    if (new_strings == NULL) {
         printf("[error]");
-        return 0;
+        return NULL;
     }
     for (int i = strings_capacity / 2; i < strings_capacity; i++) {
-        strings[i] = malloc(MAX_LEN * sizeof(char *));
-        if (strings[i] == NULL) {
+        new_strings[i] = malloc(MAX_LEN * sizeof(char *));
+        if (new_strings[i] == NULL) {
             printf("[error]");
-            return 0;
+            return NULL;
         }
     }
-    return strings;
+    return new_strings;
 }
 
 int main() {
@@ -88,6 +88,10 @@ int main() {
         if (strings_amount >= strings_capacity) {
             strings_capacity *= 2;
             strings = realloc_memory(strings, strings_capacity);
+            if (strings == NULL) {
+                printf("[error]");
+                return 0;
+            }
         }
         char *fgets_result = fgets(strings[strings_amount], MAX_LEN, stdin);
         if (fgets_result == NULL) {
