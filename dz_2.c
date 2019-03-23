@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <ctype.h>
 
 /*
  * Смирнова Анита АПО-12
@@ -12,37 +12,9 @@
  * Поддерживаемые операции: 'U' - объединение, '^' - пересечение, '\' - разность множеств, '()' - задание приоритета вычислений.
  */
 
-void delete_spaces_from_string(char *string, int space_amount, int j) {
-  int string_length = (int) strlen(string);
-  for (int k = j + 2; k < string_length; k++) {
-    string[k] = string[k + space_amount - 1];
-    if (k == string_length - 1) {
-      break;
-    }
-  }
-  string[string_length - space_amount + 1] = '\0';
-}
-
-void delete_spaces(char *string) {
-    int space_amount = 0;
-    int string_length = (int) strlen(string);
-    for (int j = string_length - 2; j >= 0; j--) {
-      if (string[j] == ' ') {
-        space_amount++;
-      } else {
-        if (space_amount > 1) {
-          delete_spaces_from_string(string, space_amount, j);
-        }
-        space_amount = 0;
-      }
-    }
-    if (space_amount > 1) {
-      delete_spaces_from_string(string, space_amount, -1);
-    }
-}
 
 int main() {
-  FILE * stream = fopen("/home/anita/Desktop/c_homeworks/test.txt", "r");
+  FILE *stream = fopen("/home/anita/Desktop/c_homeworks/test.txt", "r");
   if (stream == NULL) {
     perror("fopen");
     exit(EXIT_FAILURE);
@@ -50,11 +22,32 @@ int main() {
 
   char *line = NULL;
   size_t len = 0;
-  ssize_t nread;
+  ssize_t line_length;
 
-  while ((nread = getline(&line, &len, stream)) != -1) {
-    printf("Retrieved line of length %zu:\n", nread);
-    fwrite(line, nread, 1, stdout);
+  while ((line_length = getline(&line, &len, stream)) != -1) {
+    printf("Retrieved line of length %zu:\n", line_length);
+    fwrite(line, line_length, 1, stdout);
+    int digit_token_flag = -1;
+    for (int i = 0; i < line_length; i++) {
+      if (!isspace(line[i])) {
+        if (line[i] == '[') {
+          digit_token_flag = 1;
+        } else if (line[i] == ']') {
+
+          printf("\n");
+          digit_token_flag = 0;
+        } else {
+          if (digit_token_flag == -1) {
+            digit_token_flag = 0;
+          }
+            if (digit_token_flag == 0) {
+            printf("%c\n", line[i]);
+          } else {
+            printf("%c", line[i]);
+          }
+        }
+      }
+    }
   }
 
   free(line);
