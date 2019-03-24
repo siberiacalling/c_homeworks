@@ -16,14 +16,14 @@
 struct Stack {
   int top;
   unsigned capacity;
-  int *array;
+  char** array;
 };
 
 struct Stack *createStack(unsigned capacity) {
   struct Stack *stack = (struct Stack *) malloc(sizeof(struct Stack));
   stack->capacity = capacity;
   stack->top = -1;
-  stack->array = (int *) malloc(stack->capacity * sizeof(int));
+  stack->array = (char **) malloc(128 * sizeof(stack->array));
   return stack;
 }
 
@@ -31,17 +31,23 @@ int isFull(struct Stack *stack) { return stack->top == stack->capacity - 1; }
 
 int isEmpty(struct Stack *stack) { return stack->top == -1; }
 
-void push(struct Stack *stack, int item) {
+void push(struct Stack *stack, char* item) {
   if (isFull(stack))
     return;
+  //strncpy(tokens[token_number], line + token_first_pos, (size_t) token_length);
   stack->array[++stack->top] = item;
-  printf("%d pushed to stack\n", item);
 }
 
-int pop(struct Stack *stack) {
+char * pop(struct Stack *stack) {
   if (isEmpty(stack))
-    return INT_MIN;
+    return NULL;
   return stack->array[stack->top--];
+}
+
+char * top(struct Stack *stack) {
+  if (isEmpty(stack))
+    return NULL;
+  return stack->array[stack->top];
 }
 
 char **allocateTokens(int line_length) {
@@ -68,7 +74,7 @@ int compare( const void* a, const void* b)
   return 1;
 }
 
-void convertStrtoArr(const char *str) {
+void convertStrToArr(const char *str) {
   // 128 max length
   int arr[128] = {0};
   int flag_digit = 0;
@@ -96,51 +102,98 @@ void convertStrtoArr(const char *str) {
 
 }
 
-/* Function prints union of arr1[] and arr2[]
+/* The symmetric difference of two sorted array.
+   m is the number of elements in arr1[]
+   n is the number of elements in arr2[] */
+
+int getDiff(const int arr1[], const int arr2[], int m, int n, int *my_diff)
+{
+//  int arr1[] = {1, 3, 3, 5, 6, 6, 8, 9, 70};
+//  int arr2[] = {-29, 1, 3, 5, 6, 7, 9, 13, 15};
+  int diff_elements_amount = 0;
+
+  int i = 0, j = 0;
+  while (i <n && j < m)
+  {
+    if (arr1[i] < arr2[j])
+    {
+      my_diff[diff_elements_amount] = arr1[i];
+      diff_elements_amount++;
+      i++;
+    }
+    else if (arr2[j] < arr1[i])
+    {
+      my_diff[diff_elements_amount] = arr2[j];
+      diff_elements_amount++;
+      j++;
+    }
+
+    else
+    {
+      i++;
+      j++;
+    }
+  }
+  if (n < m) {
+    for (int k = i; k < m; k++) {
+      my_diff[diff_elements_amount - 1] = arr1[k];
+      diff_elements_amount++;
+
+    }
+  } else if (m < n) {
+    for (int k = j; k < n; k++) {
+      my_diff[diff_elements_amount - 1] = arr2[k];
+      diff_elements_amount++;
+    }
+  }
+  return diff_elements_amount - 1;
+}
+
+
+/* Union of arr1[] and arr2[]
    m is the number of elements in arr1[]
    n is the number of elements in arr2[] */
 
 int getUnion(const int *arr1, const int *arr2, int m, int n, int *my_union)
 {
-  int union_elements  = 0;
+  int union_elements_amount  = 0;
 
   int i = 0, j = 0;
   while (i < m && j < n)
   {
     if (arr1[i] < arr2[j]) {
-      my_union[union_elements] = arr1[i++];
-      union_elements++;
+      my_union[union_elements_amount] = arr1[i++];
+      union_elements_amount++;
     }
     else if (arr2[j] < arr1[i]) {
-      my_union[union_elements] = arr2[j++];
-      union_elements++;
+      my_union[union_elements_amount] = arr2[j++];
+      union_elements_amount++;
     }
     else
     {
-      my_union[union_elements] = arr2[j++];
-      union_elements++;
+      my_union[union_elements_amount] = arr2[j++];
+      union_elements_amount++;
       i++;
     }
   }
-  /* Print remaining elements of the larger array */
   while(i < m) {
-    my_union[union_elements] = arr1[i++];
-    union_elements++;
+    my_union[union_elements_amount] = arr1[i++];
+    union_elements_amount++;
   }
   while(j < n){
-    my_union[union_elements] = arr2[j++];
-    union_elements++;
+    my_union[union_elements_amount] = arr2[j++];
+    union_elements_amount++;
   }
-  return union_elements;
+  return union_elements_amount;
 }
 
-/* Function prints Intersection of arr1[] and arr2[]
+/* Intersection of arr1[] and arr2[]
    m is the number of elements in arr1[]
    n is the number of elements in arr2[] */
 int getIntersection(const int *arr1, int *arr2, int m, int n, int *my_intersection)
 {
   int i = 0, j = 0;
-  int intersections_elements = 0;
+  int intersections_elements_amount = 0;
   while (i < m && j < n)
   {
     if (arr1[i] < arr2[j])
@@ -149,12 +202,12 @@ int getIntersection(const int *arr1, int *arr2, int m, int n, int *my_intersecti
       j++;
     else /* if arr1[i] == arr2[j] */
     {
-      my_intersection[intersections_elements] = arr2[j++];
-      intersections_elements++;
+      my_intersection[intersections_elements_amount] = arr2[j++];
+      intersections_elements_amount++;
       i++;
     }
   }
-  return intersections_elements;
+  return intersections_elements_amount;
 }
 
 void createToken(char **tokens, int token_number, int token_first_pos, int token_last_pos, char *line) {
@@ -167,9 +220,9 @@ void createToken(char **tokens, int token_number, int token_first_pos, int token
   strncpy(tokens[token_number], line + token_first_pos, (size_t) token_length);
 }
 
-void findTokens(char *line, int line_length) {
+int findTokens(char **tokens, char *line, int line_length) {
   int digit_token_flag = 0;
-  char **tokens = allocateTokens(line_length);
+
   int digit_first_pos = 0;
   int digit_last_pos = 0;
 
@@ -192,16 +245,44 @@ void findTokens(char *line, int line_length) {
       }
     }
   }
-  for (int i = 0; i < tokens_amount; i++) {
-    if (tokens[i][0] != 'U' && tokens[i][0] != '^' && tokens[i][0] != '(' && tokens[i][0] != ')')
-      convertStrtoArr(tokens[i]);
-    else
-      printf("%s\n", tokens[i]);
-  }
-  printf("NEW\n");
-  //free_memory(tokens, tokens_amount);
+  return tokens_amount;
 }
 
+void shuntingYard(char **tokens, int tokens_amount) {
+  int queue_elements = 0;
+  char **output_queue = allocateTokens(tokens_amount);
+  for (int i = 0; i < tokens_amount; i++) {
+    // output_queue[i]  = malloc(token_length * sizeof(char));
+    output_queue[i] = malloc(128 * sizeof(char));
+  }
+  struct Stack * my_stack = createStack(128);
+
+  for (int i = 0; i < tokens_amount; i++) {
+    // if token = digits
+    if (tokens[i][0] != 'U' && tokens[i][0] != '^' && tokens[i][0] != '(' && tokens[i][0] != ')') {
+      output_queue[queue_elements] = tokens[i];
+      queue_elements++;
+    } else if ( tokens[i][0] != '(') {
+      push(my_stack, tokens[i]);
+    } else if ( tokens[i][0] != ')') {
+
+    } else if ( tokens[i][0] != '^') {
+      while (top(my_stack)[0] == 'U' || top(my_stack)[0] == '^') {
+
+      }
+    } else if ( tokens[i][0] != 'U') {
+    }
+  }
+
+}
+ void printTokens(char **tokens, int tokens_amount) {
+   for (int i = 0; i < tokens_amount; i++) {
+     if (tokens[i][0] != 'U' && tokens[i][0] != '^' && tokens[i][0] != '(' && tokens[i][0] != ')')
+       convertStrToArr(tokens[i]);
+     else
+       printf("%s\n", tokens[i]);
+   }
+}
 int main() {
   FILE *stream = fopen("/home/anita/Desktop/c_homeworks/test.txt", "r");
   if (stream == NULL) {
@@ -214,28 +295,35 @@ int main() {
   ssize_t line_length;
 
   while ((line_length = getline(&line, &len, stream)) != -1) {
-    // printf("Retrieved line of length %zu:\n", line_length);
-    fwrite(line, line_length, 1, stdout);
-    findTokens(line, line_length);
+    char **tokens = allocateTokens(128);
+    fwrite(line, (size_t) line_length, 1, stdout);
+    int tokens_amount = findTokens(tokens, line, (int) line_length);
+    printTokens(tokens, tokens_amount);
+    //free_memory(tokens, tokens_amount);
   }
 
-  int arr1[] = {1, 3, 3, 5, 6, 6, 8, 9, 70 };
+  int arr1[] = {1, 3, 3, 5, 6, 6, 8, 9, 70};
   int arr2[] = {-29, 1, 3, 5, 6, 7, 9, 13, 15};
 
+//  int arr1[] =  {3, 5, 6, 7};
+//  int arr2[] = {1, 3,  8, 9, 70};
   int m = sizeof(arr1)/sizeof(arr1[0]);
   int n = sizeof(arr2)/sizeof(arr2[0]);
 
-  printf("INTERSEC\n");
 
   int my_union[128] = {0};
-  int union_elements = getUnion(arr1, arr2, m, n, my_union);
+  int union_elements_amount = getUnion(arr1, arr2, m, n, my_union);
 
   int my_intersections[128] = {0};
-  int intersections_elements = getIntersection(arr1, arr2, m, n, my_intersections);
+  int intersections_elements_amount = getIntersection(arr1, arr2, m, n, my_intersections);
 
-  for(int i = 0; i < intersections_elements; i++) {
-    printf("%d ", my_intersections[i]);
-  }
+//  int my_diff[128] = {0};
+//  int diff_elements_amount = getDiff(arr1, arr2, m, n, my_diff);
+//
+//  printf("DIFF\n");
+//  for(int i = 0; i < diff_elements_amount; i++) {
+//    printf("%d ", my_diff[i]);
+//  }
 
   free(line);
   fclose(stream);
