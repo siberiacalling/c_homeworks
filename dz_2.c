@@ -8,7 +8,7 @@
 
 /*
  * Смирнова Анита АПО-12
- * RUN ID
+ * RUN ID 2043
  * Разработайте программу-калькулятор, умеющую вычислять арифметические выражения над множествами натуральных чисел.
  * Входные данные (выражение с описанием множеств и производимых над ними операций) подаются на стандартный поток ввода программы,
  * результат вычислений должен подаваться на стандартный поток вывода.
@@ -93,68 +93,43 @@ int convertStrToArr(int *arr, const char *str) {
   return j + 1;
 }
 
-/* The symmetric difference of two sorted array.
-   m is the number of elements in arr1[]
-   n is the number of elements in arr2[] */
-
-int getDiff(const int arr1[], const int arr2[], int m, int n, int *my_diff) {
-//  int arr1[] = {1, 3, 3, 5, 6, 6, 8, 9, 70};
-//  int arr2[] = {-29, 1, 3, 5, 6, 7, 9, 13, 15};
+int getDiff(const int arr1[], const int arr2[], int arr1_len, int arr2_len, int *my_diff) {
   int diff_elements_amount = 0;
 
-  int i = 0, j = 0;
-  while (i < n && j < m) {
-    if (arr1[i] < arr2[j]) {
+  for (int i = 0; i < arr1_len; i++) {
+    bool found = false;
+    for (int j = 0; j < arr2_len; j++) {
+      if (arr1[i] == arr2[j]) {
+        found = true;
+      }
+    }
+    if (!found) {
       my_diff[diff_elements_amount] = arr1[i];
       diff_elements_amount++;
-      i++;
-    } else if (arr2[j] < arr1[i]) {
-      my_diff[diff_elements_amount] = arr2[j];
-      diff_elements_amount++;
-      j++;
-    } else {
-      i++;
-      j++;
     }
   }
-  if (n < m) {
-    for (int k = i; k < m; k++) {
-      my_diff[diff_elements_amount - 1] = arr1[k];
-      diff_elements_amount++;
-
-    }
-  } else if (m < n) {
-    for (int k = j; k < n; k++) {
-      my_diff[diff_elements_amount - 1] = arr2[k];
-      diff_elements_amount++;
-    }
-  }
-  return diff_elements_amount - 1;
+  return diff_elements_amount;
 }
 
-/* Union of arr1[] and arr2[]
-   m is the number of elements in arr1[]
-   n is the number of elements in arr2[] */
-
-int getUnion(const int *arr1, const int *arr2, int m, int n, int *my_union) {
+int getUnion(const int *arr1, const int *arr2, int arr1_len, int arr2_len, int *my_union) {
   int union_elements_amount = 0;
 
-  if (m == 0) {
-    for (int i = 0; i < n; i++) {
+  if (arr1_len == 0) {
+    for (int i = 0; i < arr2_len; i++) {
       my_union[i] = arr2[i];
     }
-    return n;
+    return arr2_len;
   }
 
-  if (n == 0) {
-    for (int i = 0; i < m; i++) {
+  if (arr2_len == 0) {
+    for (int i = 0; i < arr1_len; i++) {
       my_union[i] = arr1[i];
     }
-    return m;
+    return arr1_len;
   }
 
   int i = 0, j = 0;
-  while (i < m && j < n) {
+  while (i < arr1_len && j < arr2_len) {
     if (arr1[i] < arr2[j]) {
       my_union[union_elements_amount] = arr1[i++];
       union_elements_amount++;
@@ -167,30 +142,27 @@ int getUnion(const int *arr1, const int *arr2, int m, int n, int *my_union) {
       i++;
     }
   }
-  while (i < m) {
+  while (i < arr1_len) {
     my_union[union_elements_amount] = arr1[i++];
     union_elements_amount++;
   }
-  while (j < n) {
+  while (j < arr2_len) {
     my_union[union_elements_amount] = arr2[j++];
     union_elements_amount++;
   }
   return union_elements_amount;
 }
 
-/* Intersection of arr1[] and arr2[]
-   m is the number of elements in arr1[]
-   n is the number of elements in arr2[] */
-int getIntersection(const int *arr1, const int *arr2, int m, int n, int *my_intersection) {
+int getIntersection(const int *arr1, const int *arr2, int arr1_len, int arr2_len, int *my_intersection) {
 
-  if (n == 0 || m == 0) {
+  if (arr2_len == 0 || arr1_len == 0) {
     my_intersection[0] = '\0';
     return 0;
   }
   int i = 0, j = 0;
 
   int intersections_elements_amount = 0;
-  while (i < m && j < n) {
+  while (i < arr1_len && j < arr2_len) {
     if (arr1[i] < arr2[j])
       i++;
     else if (arr2[j] < arr1[i])
@@ -253,7 +225,7 @@ bool isSet(const char *token) {
 }
 
 bool topPriorityIsless(char first_symbol, char current_top) {
-  if (first_symbol == 'U') {
+  if (first_symbol == 'U' || first_symbol == '\\') {
     return true;
   }
   if (first_symbol == '^') {
@@ -264,17 +236,6 @@ bool topPriorityIsless(char first_symbol, char current_top) {
   return false;
 }
 
-void printStackAndQueue(char **queue, int i, int queue_elements, struct Stack *my_stack) {
-  printf("Token #%d\n", i);
-//  for (int p = 0; p <= my_stack->top; ++p) {
-//    printf("%s ", my_stack->array[p]);
-//  }
-//  printf("\n");
-//  for (int p = 0; p < queue_elements; ++p) {
-//    printf("%s ", queue[p]);
-//  }
-//  printf("\n");
-}
 int shuntingYard(char **queue, char **tokens, int tokens_amount) {
   int queue_elements = 0;
 
@@ -307,7 +268,7 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
       assert(current_top[0] == '(');
       pop(my_stack);
 
-    } else if (tokens[i][0] == '^' || tokens[i][0] == 'U') {
+    } else if (tokens[i][0] == '^' || tokens[i][0] == 'U' || tokens[i][0] == '\\') {
       bool added = false;
       while (!isEmpty(my_stack) && topPriorityIsless(tokens[i][0], top(my_stack)[0])) {
         char *current_top = top(my_stack);
@@ -322,7 +283,6 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
       if (!added)
         push(my_stack, tokens[i]);
     }
-
   }
   while (!isEmpty(my_stack)) {
     char *current_top = top(my_stack);
@@ -333,6 +293,7 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
     queue[queue_elements] = pop(my_stack);
     queue_elements++;
   }
+
   freeStack(my_stack);
   return queue_elements;
 }
@@ -362,6 +323,8 @@ void calculateReversePolishNotation(char **queue, int queue_length) {
         elements_amount = getUnion(arr, arr2, length_set1, length_set2, my_union);
       } else if (queue[i][0] == '^') {
         elements_amount = getIntersection(arr, arr2, length_set1, length_set2, my_union);;
+      } else {
+        elements_amount = getDiff(arr2, arr, length_set2, length_set1, my_union);;
       }
 
       char *string = (char *) malloc(128 * sizeof(char));
@@ -380,7 +343,6 @@ void calculateReversePolishNotation(char **queue, int queue_length) {
       free(set2);
       free(set);
     }
-//    printStackAndQueue(queue, i, queue_length, my_stack);
   }
   char *result = pop(my_stack);
   int arr[128] = {0};
@@ -403,12 +365,6 @@ void calculateReversePolishNotation(char **queue, int queue_length) {
 }
 
 int main() {
-//  FILE *stream = fopen("/home/anita/Desktop/c_homeworks/test.txt", "r");
-//  if (stream == NULL) {
-//    perror("fopen");
-//    exit(EXIT_FAILURE);
-//  }
-
   char *line = NULL;
   size_t len = 0;
   ssize_t line_length;
@@ -419,7 +375,6 @@ int main() {
       perror("malloc");
       exit(EXIT_FAILURE);
     }
-    // fwrite(line, (size_t) line_length, 1, stdout);
     int tokens_amount = findTokens(tokens, line, (int) line_length);
 
     char **queue = (char **) malloc(tokens_amount * sizeof(*tokens));
@@ -433,29 +388,6 @@ int main() {
     free(tokens);
   }
 
-//  int arr1[] = {1, 3, 3, 5, 6, 6, 8, 9, 70};
-//  int arr2[] = {-29, 1, 3, 5, 6, 7, 9, 13, 15};
-
-//  int arr1[] =  {3, 5, 6, 7};
-//  int arr2[] = {1, 3,  8, 9, 70};
-//  int m = sizeof(arr1) / sizeof(arr1[0]);
-//  int n = sizeof(arr2) / sizeof(arr2[0]);
-//
-//  int my_union[128] = {0};
-//  int union_elements_amount = getUnion(arr1, arr2, m, n, my_union);
-//
-//  int my_intersections[128] = {0};
-//  int intersections_elements_amount = getIntersection(arr1, arr2, m, n, my_intersections);
-
-//  int my_diff[128] = {0};
-//  int diff_elements_amount = getDiff(arr1, arr2, m, n, my_diff);
-//
-//  printf("DIFF\n");
-//  for(int i = 0; i < diff_elements_amount; i++) {
-//    printf("%d ", my_diff[i]);
-//  }
-
   free(line);
-//  fclose(stream);
   return 0;
 }
