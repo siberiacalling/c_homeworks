@@ -33,7 +33,6 @@ int isEmpty(struct Stack *stack) { return stack->top == -1; }
 void push(struct Stack *stack, char *item) {
   if (isFull(stack))
     return;
-  //strncpy(tokens[token_number], line + token_first_pos, (size_t) token_length);
   stack->array[++stack->top] = item;
 }
 
@@ -43,12 +42,20 @@ char *pop(struct Stack *stack) {
   return stack->array[stack->top--];
 }
 
+void freeStack(struct Stack *stack) {
+  if (isEmpty(stack)){
+//    for (int i = 0; i < 128; i++)
+//      free(stack->array[i]);
+    free(stack->array);
+    free(stack);
+  }
+}
+
 char *top(struct Stack *stack) {
   if (isEmpty(stack))
     return NULL;
   return stack->array[stack->top];
 }
-
 char **allocateTokens(int line_length) {
   char **tokens = (char **) malloc(line_length * sizeof(*tokens));
   if (tokens == NULL) {
@@ -58,11 +65,6 @@ char **allocateTokens(int line_length) {
   return tokens;
 }
 
-void free_memory(char **strings, int strings_capacity) {
-  for (int i = 0; i < strings_capacity; i++)
-    free(strings[i]);
-  free(strings);
-}
 int compare(const void *a, const void *b) {
   int int_a = *((int *) a);
   int int_b = *((int *) b);
@@ -72,7 +74,7 @@ int compare(const void *a, const void *b) {
   return 1;
 }
 
-int convertStrToArr(int * arr, const char *str) {
+int convertStrToArr(int *arr, const char *str) {
   // 128 max length
   int flag_digit = 0;
   int j = -1;
@@ -93,7 +95,7 @@ int convertStrToArr(int * arr, const char *str) {
     qsort(arr, arr_length, sizeof(int), compare);
   }
   // array length
-  return j;
+  return j + 1;
 //  for (int i = 0; i <= j; i++) {
 //    printf("%d ", arr[i]);
 //  }
@@ -144,8 +146,22 @@ int getDiff(const int arr1[], const int arr2[], int m, int n, int *my_diff) {
    m is the number of elements in arr1[]
    n is the number of elements in arr2[] */
 
-int getUnion(const int *arr1, const int *arr2, int m, int n, int *my_union) {
+int getUnion(int *arr1, int *arr2, int m, int n, int *my_union) {
   int union_elements_amount = 0;
+
+  if (m == 0) {
+    for (int i = 0; i < n; i++) {
+      my_union[i] = arr2[i];
+    }
+    return n;
+  }
+
+  if (n == 0) {
+    for (int i = 0; i < m; i++) {
+      my_union[i] = arr1[i];
+    }
+    return m;
+  }
 
   int i = 0, j = 0;
   while (i < m && j < n) {
@@ -176,7 +192,13 @@ int getUnion(const int *arr1, const int *arr2, int m, int n, int *my_union) {
    m is the number of elements in arr1[]
    n is the number of elements in arr2[] */
 int getIntersection(const int *arr1, int *arr2, int m, int n, int *my_intersection) {
+
+  if (n == 0 || m == 0) {
+    my_intersection[0]='\0';
+    return 0;
+  }
   int i = 0, j = 0;
+
   int intersections_elements_amount = 0;
   while (i < m && j < n) {
     if (arr1[i] < arr2[j])
@@ -237,38 +259,44 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
   struct Stack *my_stack = createStack(128);
 
   for (int i = 0; i < tokens_amount; i++) {
+
     // if token = digits
-    if (tokens[i][0] != 'U' && tokens[i][0] != '^' && tokens[i][0] != '(' && tokens[i][0] != ')' && tokens[i][0] != '\\') {
+    if (tokens[i][0] != 'U' && tokens[i][0] != '^' && tokens[i][0] != '(' && tokens[i][0] != ')'
+        && tokens[i][0] != '\\') {
       queue[queue_elements] = tokens[i];
       queue_elements++;
     } else if (tokens[i][0] == '(') {
       push(my_stack, tokens[i]);
     } else if (tokens[i][0] == ')') {
       char *current_top;
-      if (!isEmpty(my_stack)) {
-        perror("missed (");
+      if (isEmpty(my_stack)) {
+        perror("missed ( 1");
         exit(EXIT_FAILURE);
       }
       current_top = top(my_stack);
-
       while (current_top[0] != '(') {
         queue[queue_elements] = pop(my_stack);
         queue_elements++;
-        if (!isEmpty(my_stack)) {
-          perror("missed (");
+        if (isEmpty(my_stack)) {
+          perror("missed ( 2");
           exit(EXIT_FAILURE);
         }
         current_top = top(my_stack);
       }
       pop(my_stack);
+
     } else if (tokens[i][0] == '^' || tokens[i][0] == 'U') {
       while (!isEmpty(my_stack)) {
         char *current_top = top(my_stack);
-        if (current_top[0] != '(') {
+        if (current_top[0] == '(') {
+          push(my_stack, tokens[i]);
           break;
         }
         queue[queue_elements] = pop(my_stack);
         queue_elements++;
+      }
+      if (isEmpty(my_stack)) {
+        push(my_stack, tokens[i]);
       }
     }
   }
@@ -281,46 +309,93 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
     queue[queue_elements] = pop(my_stack);
     queue_elements++;
   }
+  freeStack(my_stack);
   return queue_elements;
 }
 void printTokens(char **tokens, int tokens_amount) {
   for (int i = 0; i < tokens_amount; i++) {
     int arr[128] = {0};
-    if (tokens[i][0] != 'U' && tokens[i][0] != '^' && tokens[i][0] != '(' && tokens[i][0] != ')' && tokens[i][0] != '\\')
+    if (tokens[i][0] != 'U' && tokens[i][0] != '^' && tokens[i][0] != '(' && tokens[i][0] != ')'
+        && tokens[i][0] != '\\')
       convertStrToArr(arr, tokens[i]);
     else
       printf("%s\n", tokens[i]);
   }
 }
 
-void calculateReversePolishNotation(char **queue, int queue_length){
-  struct Stack * my_stack = createStack(queue_length);
-  for (int i = 0; i < queue_length; i++){
+void calculateReversePolishNotation(char **queue, int queue_length) {
+  struct Stack *my_stack = createStack((unsigned int) queue_length);
+  for (int i = 0; i < queue_length; i++) {
+
+    // if queue[i] = digits
     if (queue[i][0] != 'U' && queue[i][0] != '^' && queue[i][0] != '(' && queue[i][0] != ')' && queue[i][0] != '\\') {
       push(my_stack, queue[i]);
-    }
-    else {
-      char *set = pop(my_stack);
-      int arr[128] = {0};
-      int length_set1 = convertStrToArr(arr, set);
+    } else {
+      if (!isEmpty(my_stack)) {
+        char *set = pop(my_stack);
+        int arr[128] = {0};
+        int length_set1 = convertStrToArr(arr, set);
 
-      char *set2 = pop(my_stack);
-      int arr2[128] = {0};
-      int length_set2 = convertStrToArr(arr, set2);
+        char *set2 = pop(my_stack);
+        int arr2[128] = {0};
+        int length_set2 = convertStrToArr(arr2, set2);
 
-      if (queue[i][0] == 'U') {
-        int my_union[128] = {0};
-        int union_elements_amount = getUnion(arr, arr2, length_set1, length_set2, my_union);
-        char result[128];
+        if (queue[i][0] == 'U') {
+          int my_union[128] = {0};
+          int union_elements_amount = getUnion(arr, arr2, length_set1, length_set2, my_union);
+
+          char string[128], *pos = string;
+          for (int j = 0; j < union_elements_amount; j++) {
+            pos += sprintf(pos, "%d ", my_union[j]);
+          }
+          char *result = string;
+          //printf("OB %s\n", result);
+          push(my_stack, result);
+        }
+
+        if (queue[i][0] == '^') {
+          int my_inters[128] = {0};
+          int intersections_elements_amount = getIntersection(arr, arr2, length_set1, length_set2, my_inters);
+
+          char string[128], *pos = string;
+          if (intersections_elements_amount == 0){
+            string[0] ='\0';
+          } else {
+            for (int j = 0; j < intersections_elements_amount; j++) {
+              pos += sprintf(pos, "%d ", my_inters[j]);
+            }
+          }
+          char *result = string;
+          //printf("IN %s\n", result);
+          push(my_stack, result);
+
+        }
       }
-
-      if (queue[i][0] == 'U') {
-        int my_inters[128] = {0};
-        int intersections_elements_amount = getIntersection(arr, arr2, length_set1, length_set2, my_inters);
-      }
-
     }
   }
+  char *result = pop(my_stack);
+  int arr[128] = {0};
+  int result_length = 0;
+  if (result != NULL){
+    result_length = convertStrToArr(arr, result);
+  }
+
+  printf("[");
+  for (int i = 0; i < result_length; i++) {
+    if (i != result_length - 1){
+      printf("%i, ", arr[i]);
+    } else{
+      printf("%i", arr[i]);
+    }
+  }
+  printf("]\n");
+  freeStack(my_stack);
+}
+
+void free_char_array(char **array, int array_length) {
+  for (int i = 0; i < array_length; i++)
+    free(array[i]);
+  free(array);
 }
 
 int main() {
@@ -338,31 +413,38 @@ int main() {
     char **tokens = allocateTokens(128);
     fwrite(line, (size_t) line_length, 1, stdout);
     int tokens_amount = findTokens(tokens, line, (int) line_length);
-    printTokens(tokens, tokens_amount);
+    //printTokens(tokens, tokens_amount);
 
-
-    char **queue = allocateTokens(tokens_amount);
+    //char **queue = allocateTokens(tokens_amount);
+    char **queue = (char **) malloc(line_length * sizeof(*tokens));
+    if (tokens == NULL) {
+      perror("malloc");
+      exit(EXIT_FAILURE);
+    }
     for (int i = 0; i < tokens_amount; i++) {
-      queue[i] = malloc(128 * sizeof(char));
+      queue[i] = malloc(tokens_amount * sizeof(char));
     }
     int queue_length = shuntingYard(queue, tokens, tokens_amount);
     calculateReversePolishNotation(queue, queue_length);
-    //free_memory(tokens, tokens_amount);
+
+//    for (int i = 0; i < tokens_amount; i++)
+//      free(queue[i]);
+//    free(queue);
   }
 
-  int arr1[] = {1, 3, 3, 5, 6, 6, 8, 9, 70};
-  int arr2[] = {-29, 1, 3, 5, 6, 7, 9, 13, 15};
+//  int arr1[] = {1, 3, 3, 5, 6, 6, 8, 9, 70};
+//  int arr2[] = {-29, 1, 3, 5, 6, 7, 9, 13, 15};
 
 //  int arr1[] =  {3, 5, 6, 7};
 //  int arr2[] = {1, 3,  8, 9, 70};
-  int m = sizeof(arr1) / sizeof(arr1[0]);
-  int n = sizeof(arr2) / sizeof(arr2[0]);
-
-  int my_union[128] = {0};
-  int union_elements_amount = getUnion(arr1, arr2, m, n, my_union);
-
-  int my_intersections[128] = {0};
-  int intersections_elements_amount = getIntersection(arr1, arr2, m, n, my_intersections);
+//  int m = sizeof(arr1) / sizeof(arr1[0]);
+//  int n = sizeof(arr2) / sizeof(arr2[0]);
+//
+//  int my_union[128] = {0};
+//  int union_elements_amount = getUnion(arr1, arr2, m, n, my_union);
+//
+//  int my_intersections[128] = {0};
+//  int intersections_elements_amount = getIntersection(arr1, arr2, m, n, my_intersections);
 
 //  int my_diff[128] = {0};
 //  int diff_elements_amount = getDiff(arr1, arr2, m, n, my_diff);
