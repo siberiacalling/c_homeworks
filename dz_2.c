@@ -56,14 +56,6 @@ char *top(struct Stack *stack) {
     return NULL;
   return stack->array[stack->top];
 }
-char **allocateTokens(int line_length) {
-  char **tokens = (char **) malloc(line_length * sizeof(*tokens));
-  if (tokens == NULL) {
-    perror("malloc");
-    exit(EXIT_FAILURE);
-  }
-  return tokens;
-}
 
 int compare(const void *a, const void *b) {
   int int_a = *((int *) a);
@@ -81,7 +73,6 @@ int convertStrToArr(int *arr, const char *str) {
   if (str == NULL) {
     return 0;
   }
-//  printf("%s %zu\n", str, strlen(str));
   for (int i = 0; str[i] != '\0'; i++) {
     if (str[i] == ',' || isspace(str[i])) {
       flag_digit = 0;
@@ -100,11 +91,6 @@ int convertStrToArr(int *arr, const char *str) {
   }
   // array length
   return j + 1;
-//  for (int i = 0; i <= j; i++) {
-//    printf("%d ", arr[i]);
-//  }
-//  printf("\n");
-
 }
 
 /* The symmetric difference of two sorted array.
@@ -306,8 +292,6 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
       char *current_top;
       if (isEmpty(my_stack)) {
         printf("[error]");
-
-        // fprintf( stderr, "there are not closed bracket: Success");
         exit(0);
       }
       current_top = top(my_stack);
@@ -316,8 +300,6 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
         queue_elements++;
         if (isEmpty(my_stack)) {
           printf("[error]");
-
-          //fprintf( stderr, "there are not closed bracket: Success");
           exit(0);
         }
         current_top = top(my_stack);
@@ -337,37 +319,23 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
         queue[queue_elements] = pop(my_stack);
         queue_elements++;
       }
-//      if (isEmpty(my_stack))
       if (!added)
         push(my_stack, tokens[i]);
     }
 
-//    printStackAndQueue(queue, i, queue_elements, my_stack);
   }
   while (!isEmpty(my_stack)) {
     char *current_top = top(my_stack);
     if (current_top[0] == '(' || current_top[0] == ')') {
       printf("[error]");
-      //fprintf( stderr, "there are not closed bracket: Success");
       exit(0);
     }
     queue[queue_elements] = pop(my_stack);
     queue_elements++;
   }
-//  printStackAndQueue(queue, -1, queue_elements, my_stack);
   freeStack(my_stack);
   return queue_elements;
 }
-//void printTokens(char **tokens, int tokens_amount) {
-//  for (int i = 0; i < tokens_amount; i++) {
-//    int arr[128] = {0};
-//    if (tokens[i][0] != 'U' && tokens[i][0] != '^' && tokens[i][0] != '(' && tokens[i][0] != ')'
-//        && tokens[i][0] != '\\')
-//      convertStrToArr(arr, tokens[i]);
-//    else
-//      printf("%s\n", tokens[i]);
-//  }
-//}
 
 void calculateReversePolishNotation(char **queue, int queue_length) {
   struct Stack *my_stack = createStack((unsigned int) queue_length);
@@ -388,36 +356,27 @@ void calculateReversePolishNotation(char **queue, int queue_length) {
       int arr2[128] = {0};
       int length_set2 = convertStrToArr(arr2, set2);
 
+      int my_union[128] = {0};
+      int elements_amount = 0;
       if (queue[i][0] == 'U') {
-        int my_union[128] = {0};
-        int union_elements_amount = getUnion(arr, arr2, length_set1, length_set2, my_union);
+        elements_amount = getUnion(arr, arr2, length_set1, length_set2, my_union);
+      } else if (queue[i][0] == '^') {
+        elements_amount = getIntersection(arr, arr2, length_set1, length_set2, my_union);;
+      }
 
-        char *string = (char *) malloc(128 * sizeof(char));
-        char *pos = string;
-        for (int j = 0; j < union_elements_amount; j++) {
+      char *string = (char *) malloc(128 * sizeof(char));
+      char *pos = string;
+      if (elements_amount == 0) {
+        string[0] = '\0';
+      } else {
+        for (int j = 0; j < elements_amount; j++) {
           pos += sprintf(pos, "%d ", my_union[j]);
         }
-        char *result = string;
-        push(my_stack, result);
       }
 
-      if (queue[i][0] == '^') {
-        int my_inters[128] = {0};
-        int intersections_elements_amount = getIntersection(arr, arr2, length_set1, length_set2, my_inters);
+      char *result = string;
+      push(my_stack, result);
 
-        char *string = (char *) malloc(128 * sizeof(char));
-        char *pos = string;
-        if (intersections_elements_amount == 0) {
-          string[0] = '\0';
-        } else {
-          for (int j = 0; j < intersections_elements_amount; j++) {
-            pos += sprintf(pos, "%d ", my_inters[j]);
-          }
-        }
-        char *result = string;
-        push(my_stack, result);
-
-      }
       free(set2);
       free(set);
     }
@@ -443,7 +402,6 @@ void calculateReversePolishNotation(char **queue, int queue_length) {
   freeStack(my_stack);
 }
 
-
 int main() {
 //  FILE *stream = fopen("/home/anita/Desktop/c_homeworks/test.txt", "r");
 //  if (stream == NULL) {
@@ -456,7 +414,6 @@ int main() {
   ssize_t line_length;
 
   while ((line_length = getline(&line, &len, stdin)) != -1) {
-    //char **tokens = allocateTokens(128);
     char **tokens = (char **) malloc(line_length * sizeof(char *));
     if (tokens == NULL) {
       perror("malloc");
@@ -464,18 +421,11 @@ int main() {
     }
     // fwrite(line, (size_t) line_length, 1, stdout);
     int tokens_amount = findTokens(tokens, line, (int) line_length);
-    //printTokens(tokens, tokens_amount);
 
-    //char **queue = allocateTokens(tokens_amount);
     char **queue = (char **) malloc(tokens_amount * sizeof(*tokens));
-//    for (int i = 0; i < tokens_amount; i++) {
-//      queue[i] = malloc(128 * sizeof(char));
-//    }
     int queue_length = shuntingYard(queue, tokens, tokens_amount);
     calculateReversePolishNotation(queue, queue_length);
 
-//    for (int i = 0; i < tokens_amount; i++)
-//      free(queue[i]);
     free(queue);
 
     for (int i = 0; i < tokens_amount; i++)
