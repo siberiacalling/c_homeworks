@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <assert.h>
+#define MAX_CHARS_IN_STRING 128
 
 /*
  * Смирнова Анита АПО-12
@@ -24,8 +25,8 @@ struct Stack *createStack(unsigned capacity) {
   struct Stack *stack = (struct Stack *) malloc(sizeof(struct Stack));
   stack->capacity = capacity;
   stack->top = -1;
-  stack->array = (char **) malloc(128 * sizeof(char *));
-  memset(stack->array, 0, 128 * sizeof(char *));
+  stack->array = (char **) malloc(capacity * sizeof(char *));
+  memset(stack->array, 0, capacity * sizeof(char *));
   return stack;
 }
 
@@ -33,10 +34,31 @@ int isFull(struct Stack *stack) { return stack->top == stack->capacity - 1; }
 
 int isEmpty(struct Stack *stack) { return stack->top == -1; }
 
-void push(struct Stack *stack, char *item) {
-  if (isFull(stack))
-    return;
+void freeCharArray(char **array, int elements_amount) {
+  for (int i = 0; i < elements_amount; i++)
+    free(array[i]);
+  free(array);
+}
+
+char **reallocMemory(struct Stack *stack) {
+  char **new_array = realloc(stack->array, (stack->capacity) * sizeof(stack->array));
+  if (new_array == NULL) {
+    freeCharArray(stack->array, stack->capacity);
+    printf("[error]");
+    return NULL;
+  }
+  return new_array;
+}
+
+int push(struct Stack *stack, char *item) {
+  if (isFull(stack)) {
+    stack->array = reallocMemory(stack);
+    if (stack->array == NULL) {
+      return -1;
+    }
+  }
   stack->array[++stack->top] = item;
+  return 0;
 }
 
 char *pop(struct Stack *stack) {
@@ -66,7 +88,6 @@ int compare(const void *a, const void *b) {
 }
 
 int convertStrToArr(int *arr, const char *str) {
-  // 128 max length
   int flag_digit = 0;
   int j = -1;
   if (str == NULL) {
@@ -94,7 +115,6 @@ int convertStrToArr(int *arr, const char *str) {
 
 int getDiff(const int arr1[], const int arr2[], int arr1_len, int arr2_len, int *my_diff) {
   int diff_elements_amount = 0;
-
   for (int i = 0; i < arr1_len; i++) {
     bool found = false;
     for (int j = 0; j < arr2_len; j++) {
@@ -153,7 +173,6 @@ int getUnion(const int *arr1, const int *arr2, int arr1_len, int arr2_len, int *
 }
 
 int getIntersection(const int *arr1, const int *arr2, int arr1_len, int arr2_len, int *my_intersection) {
-
   if (arr2_len == 0 || arr1_len == 0) {
     my_intersection[0] = '\0';
     return 0;
@@ -184,18 +203,12 @@ int createToken(char **tokens, int token_number, int token_first_pos, int token_
   }
   tokens[token_number] = malloc((token_length + 1) * sizeof(char));
   if (tokens[token_number] == NULL) {
-    perror("malloc");
+    printf("[malloc error]");
     return -1;
   }
   strncpy(tokens[token_number], line + token_first_pos, (size_t) token_length);
   tokens[token_number][token_length] = '\0';
   return 0;
-}
-
-void free_tokens_array(char **tokens, int tokens_amount) {
-  for (int i = 0; i < tokens_amount; i++)
-    free(tokens[i]);
-  free(tokens);
 }
 
 int findTokens(char **tokens, char *line, int line_length) {
@@ -215,7 +228,7 @@ int findTokens(char **tokens, char *line, int line_length) {
         digit_last_pos = i;
         int result = createToken(tokens, tokens_amount, digit_first_pos, digit_last_pos, line);
         if (result == -1) {
-          free_tokens_array(tokens, tokens_amount);
+          freeCharArray(tokens, tokens_amount);
           return -1;
         }
         tokens_amount++;
@@ -223,7 +236,7 @@ int findTokens(char **tokens, char *line, int line_length) {
         if (digit_token_flag == 0) {
           int result = createToken(tokens, tokens_amount, i, i + 1, line);
           if (result == -1) {
-            free_tokens_array(tokens, tokens_amount);
+            freeCharArray(tokens, tokens_amount);
             return -1;
           }
           tokens_amount++;
@@ -238,7 +251,7 @@ bool isSet(const char *token) {
       && token[0] != '\\');
 }
 
-bool topPriorityIsless(char first_symbol, char current_top) {
+bool topPriorityIsLess(char first_symbol, char current_top) {
   if (first_symbol == 'U' || first_symbol == '\\') {
     return true;
   }
@@ -253,7 +266,7 @@ bool topPriorityIsless(char first_symbol, char current_top) {
 int shuntingYard(char **queue, char **tokens, int tokens_amount) {
   int queue_elements = 0;
 
-  struct Stack *my_stack = createStack(128);
+  struct Stack *my_stack = createStack(MAX_CHARS_IN_STRING);
 
   for (int i = 0; i < tokens_amount; i++) {
 
@@ -262,7 +275,11 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
       queue[queue_elements] = tokens[i];
       queue_elements++;
     } else if (tokens[i][0] == '(') {
-      push(my_stack, tokens[i]);
+      int push_result = push(my_stack, tokens[i]);
+      if (push_result == -1) {
+        printf("[push error]");
+        return -1;
+      }
     } else if (tokens[i][0] == ')') {
       if (isEmpty(my_stack)) {
         printf("[error]");
@@ -283,7 +300,7 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
 
     } else if (tokens[i][0] == '^' || tokens[i][0] == 'U' || tokens[i][0] == '\\') {
       bool added = false;
-      while (!isEmpty(my_stack) && topPriorityIsless(tokens[i][0], top(my_stack)[0])) {
+      while (!isEmpty(my_stack) && topPriorityIsLess(tokens[i][0], top(my_stack)[0])) {
         char *current_top = top(my_stack);
         if (current_top[0] == '(') {
           push(my_stack, tokens[i]);
@@ -312,6 +329,18 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
   return queue_elements;
 }
 
+void printResult(int *arr, int result_length) {
+  printf("[");
+  for (int i = 0; i < result_length; i++) {
+    if (i != result_length - 1) {
+      printf("%i,", arr[i]);
+    } else {
+      printf("%i", arr[i]);
+    }
+  }
+  printf("]\n");
+}
+
 int calculateReversePolishNotation(char **queue, int queue_length) {
   struct Stack *my_stack = createStack((unsigned int) queue_length);
   for (int i = 0; i < queue_length; i++) {
@@ -324,14 +353,15 @@ int calculateReversePolishNotation(char **queue, int queue_length) {
       assert(!isEmpty(my_stack));
 
       char *set = pop(my_stack);
-      int arr[128] = {0};
+      int arr[MAX_CHARS_IN_STRING] = {0};
       int length_set1 = convertStrToArr(arr, set);
 
       char *set2 = pop(my_stack);
-      int arr2[128] = {0};
+      int arr2[MAX_CHARS_IN_STRING] = {0};
       int length_set2 = convertStrToArr(arr2, set2);
 
-      int my_union[128] = {0};
+      int my_union[MAX_CHARS_IN_STRING] = {0};
+
       int elements_amount = 0;
       if (queue[i][0] == 'U') {
         elements_amount = getUnion(arr, arr2, length_set1, length_set2, my_union);
@@ -341,9 +371,9 @@ int calculateReversePolishNotation(char **queue, int queue_length) {
         elements_amount = getDiff(arr2, arr, length_set2, length_set1, my_union);
       }
 
-      char *string = (char *) malloc(128 * sizeof(char));
+      char *string = (char *) malloc(MAX_CHARS_IN_STRING * sizeof(char));
       if (string == NULL) {
-        perror("malloc");
+        printf("[malloc error]");
         return -1;
       }
       char *pos = string;
@@ -363,21 +393,12 @@ int calculateReversePolishNotation(char **queue, int queue_length) {
     }
   }
   char *result = pop(my_stack);
-  int arr[128] = {0};
+  int arr[MAX_CHARS_IN_STRING] = {0};
   int result_length = 0;
   if (result != NULL) {
     result_length = convertStrToArr(arr, result);
   }
-
-  printf("[");
-  for (int i = 0; i < result_length; i++) {
-    if (i != result_length - 1) {
-      printf("%i,", arr[i]);
-    } else {
-      printf("%i", arr[i]);
-    }
-  }
-  printf("]\n");
+  printResult(arr, result_length);
   free(result);
   freeStack(my_stack);
   return 0;
@@ -391,39 +412,39 @@ int main() {
   while ((line_length = getline(&line, &len, stdin)) != -1) {
     char **tokens = (char **) malloc(line_length * sizeof(char *));
     if (tokens == NULL) {
-      perror("malloc");
+      printf("[malloc error]");
       return 0;
     }
     int tokens_amount = findTokens(tokens, line, (int) line_length);
     if (tokens_amount == -1) {
-      perror("malloc");
+      printf("[malloc error]");
       return 0;
     }
 
     char **queue = (char **) malloc(tokens_amount * sizeof(*tokens));
     if (queue == NULL) {
-      free_tokens_array(tokens, tokens_amount);
+      freeCharArray(tokens, tokens_amount);
       free(line);
-      perror("malloc");
+      printf("[malloc error]");
       return 0;
     }
     int queue_length = shuntingYard(queue, tokens, tokens_amount);
     if (queue_length == -1) {
       free(queue);
-      free_tokens_array(tokens, tokens_amount);
+      freeCharArray(tokens, tokens_amount);
       free(line);
       return 0;
     }
     int result = calculateReversePolishNotation(queue, queue_length);
     if (result == -1) {
       free(queue);
-      free_tokens_array(tokens, tokens_amount);
+      freeCharArray(tokens, tokens_amount);
       free(line);
       return 0;
     }
 
     free(queue);
-    free_tokens_array(tokens, tokens_amount);
+    freeCharArray(tokens, tokens_amount);
   }
   free(line);
   return 0;
