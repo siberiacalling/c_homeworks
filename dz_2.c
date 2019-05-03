@@ -46,7 +46,6 @@ char *pop(struct Stack *stack) {
 }
 
 void freeStack(struct Stack *stack) {
-  assert(isEmpty(stack));
   free(stack->array);
   free(stack);
 }
@@ -177,19 +176,26 @@ int getIntersection(const int *arr1, const int *arr2, int arr1_len, int arr2_len
   return intersections_elements_amount;
 }
 
-void createToken(char **tokens, int token_number, int token_first_pos, int token_last_pos, char *line) {
+int createToken(char **tokens, int token_number, int token_first_pos, int token_last_pos, char *line) {
   int token_length = token_last_pos - token_first_pos;
   if (token_length == 0) {
     tokens[token_number] = NULL;
-    return;
+    return 0;
   }
   tokens[token_number] = malloc((token_length + 1) * sizeof(char));
   if (tokens[token_number] == NULL) {
     perror("malloc");
-    exit(EXIT_FAILURE);
+    return -1;
   }
   strncpy(tokens[token_number], line + token_first_pos, (size_t) token_length);
   tokens[token_number][token_length] = '\0';
+  return 0;
+}
+
+void free_tokens_array(char **tokens, int tokens_amount) {
+  for (int i = 0; i < tokens_amount; i++)
+    free(tokens[i]);
+  free(tokens);
 }
 
 int findTokens(char **tokens, char *line, int line_length) {
@@ -207,11 +213,19 @@ int findTokens(char **tokens, char *line, int line_length) {
       } else if (line[i] == ']') {
         digit_token_flag = 0;
         digit_last_pos = i;
-        createToken(tokens, tokens_amount, digit_first_pos, digit_last_pos, line);
+        int result = createToken(tokens, tokens_amount, digit_first_pos, digit_last_pos, line);
+        if (result == -1) {
+          free_tokens_array(tokens, tokens_amount);
+          return -1;
+        }
         tokens_amount++;
       } else {
         if (digit_token_flag == 0) {
-          createToken(tokens, tokens_amount, i, i + 1, line);
+          int result = createToken(tokens, tokens_amount, i, i + 1, line);
+          if (result == -1) {
+            free_tokens_array(tokens, tokens_amount);
+            return -1;
+          }
           tokens_amount++;
         }
       }
@@ -250,18 +264,17 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
     } else if (tokens[i][0] == '(') {
       push(my_stack, tokens[i]);
     } else if (tokens[i][0] == ')') {
-      char *current_top;
       if (isEmpty(my_stack)) {
         printf("[error]");
-        exit(0);
+        return -1;
       }
-      current_top = top(my_stack);
+      char *current_top = top(my_stack);
       while (current_top[0] != '(') {
         queue[queue_elements] = pop(my_stack);
         queue_elements++;
         if (isEmpty(my_stack)) {
           printf("[error]");
-          exit(0);
+          return -1;
         }
         current_top = top(my_stack);
       }
@@ -288,7 +301,8 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
     char *current_top = top(my_stack);
     if (current_top[0] == '(' || current_top[0] == ')') {
       printf("[error]");
-      exit(0);
+      freeStack(my_stack);
+      return -1;
     }
     queue[queue_elements] = pop(my_stack);
     queue_elements++;
@@ -298,7 +312,7 @@ int shuntingYard(char **queue, char **tokens, int tokens_amount) {
   return queue_elements;
 }
 
-void calculateReversePolishNotation(char **queue, int queue_length) {
+int calculateReversePolishNotation(char **queue, int queue_length) {
   struct Stack *my_stack = createStack((unsigned int) queue_length);
   for (int i = 0; i < queue_length; i++) {
 
@@ -322,12 +336,16 @@ void calculateReversePolishNotation(char **queue, int queue_length) {
       if (queue[i][0] == 'U') {
         elements_amount = getUnion(arr, arr2, length_set1, length_set2, my_union);
       } else if (queue[i][0] == '^') {
-        elements_amount = getIntersection(arr, arr2, length_set1, length_set2, my_union);;
+        elements_amount = getIntersection(arr, arr2, length_set1, length_set2, my_union);
       } else {
-        elements_amount = getDiff(arr2, arr, length_set2, length_set1, my_union);;
+        elements_amount = getDiff(arr2, arr, length_set2, length_set1, my_union);
       }
 
       char *string = (char *) malloc(128 * sizeof(char));
+      if (string == NULL) {
+        perror("malloc");
+        return -1;
+      }
       char *pos = string;
       if (elements_amount == 0) {
         string[0] = '\0';
@@ -362,6 +380,7 @@ void calculateReversePolishNotation(char **queue, int queue_length) {
   printf("]\n");
   free(result);
   freeStack(my_stack);
+  return 0;
 }
 
 int main() {
@@ -373,21 +392,39 @@ int main() {
     char **tokens = (char **) malloc(line_length * sizeof(char *));
     if (tokens == NULL) {
       perror("malloc");
-      exit(EXIT_FAILURE);
+      return 0;
     }
     int tokens_amount = findTokens(tokens, line, (int) line_length);
+    if (tokens_amount == -1) {
+      perror("malloc");
+      return 0;
+    }
 
     char **queue = (char **) malloc(tokens_amount * sizeof(*tokens));
+    if (queue == NULL) {
+      free_tokens_array(tokens, tokens_amount);
+      free(line);
+      perror("malloc");
+      return 0;
+    }
     int queue_length = shuntingYard(queue, tokens, tokens_amount);
-    calculateReversePolishNotation(queue, queue_length);
+    if (queue_length == -1) {
+      free(queue);
+      free_tokens_array(tokens, tokens_amount);
+      free(line);
+      return 0;
+    }
+    int result = calculateReversePolishNotation(queue, queue_length);
+    if (result == -1) {
+      free(queue);
+      free_tokens_array(tokens, tokens_amount);
+      free(line);
+      return 0;
+    }
 
     free(queue);
-
-    for (int i = 0; i < tokens_amount; i++)
-      free(tokens[i]);
-    free(tokens);
+    free_tokens_array(tokens, tokens_amount);
   }
-
   free(line);
   return 0;
 }
